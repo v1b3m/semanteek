@@ -2,11 +2,12 @@ import * as vscode from "vscode";
 import { pipeline } from "@xenova/transformers";
 import * as path from "path";
 import * as fs from "fs/promises";
-import { ensureCollection, upsert } from "./qdrant";
+import { ensureCollection, QDRANT_URL, upsert } from "./qdrant";
 import { randomUUID } from "crypto";
 import { OpenAI } from "openai";
 import { GoogleAuth } from "google-auth-library";
 import { loadConfig } from "./config";
+import axios from "axios";
 
 let embedder: any; // cached pipeline instance
 let embedFn: (text: string) => Promise<number[]>;
@@ -154,4 +155,54 @@ export const embed = (text: string) => embedFn(text);
 function resolveKey(key: string) {
   const m = key?.match(/^\${env\.(.+)}$/);
   return m ? process.env[m[1]] : key;
+}
+
+// index (or re-index) only the given URIs
+export async function indexFiles(uris: vscode.Uri[]) {
+  if (!uris.length) return;
+  const cfg = await loadConfig();
+  await ensureCollection(cfg?.dimension ?? 384);
+  await initEmbedder();
+
+  const folders = vscode.workspace.workspaceFolders!;
+  const root = folders[0].uri.fsPath;
+
+  const batch: any[] = [];
+  for (const uri of uris) {
+    const rel = path.relative(root, uri.fsPath);
+    const content = await fs.readFile(uri.fsPath, "utf8");
+    const chunks = chunkCode(content, cfg?.chunkSize ?? 30);
+
+    // delete old points for this file first (see 3.)
+    await deleteByFile(rel);
+
+    for (const ch of chunks) {
+      const vector = await embed(ch.text);
+      batch.push({
+        id: randomUUID(),
+        vector,
+        payload: { file: rel, start: ch.startLine, text: ch.text },
+      });
+    }
+  }
+  if (batch.length) await upsert(batch);
+}
+
+// remove all points that belonged to deleted file(s)
+export async function removeFiles(uris: vscode.Uri[]) {
+  const folders = vscode.workspace.workspaceFolders!;
+  const root = folders[0].uri.fsPath;
+  for (const uri of uris) {
+    const rel = path.relative(root, uri.fsPath);
+    await deleteByFile(rel);
+  }
+}
+
+// helper: delete every point whose payload.file == rel
+async function deleteByFile(rel: string) {
+  const cfg = await loadConfig();
+  await axios.post(
+    `${QDRANT_URL}/collections/${cfg?.collection}/points/delete`,
+    { filter: { must: [{ key: "file", match: { value: rel } }] } }
+  );
 }

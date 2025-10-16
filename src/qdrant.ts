@@ -1,6 +1,6 @@
 import axios from "axios";
 import { loadConfig } from "./config";
-const QDRANT_URL = "http://localhost:6333";
+export const QDRANT_URL = "http://localhost:6333";
 
 export async function ensureCollection(
   dimension: number = 384,

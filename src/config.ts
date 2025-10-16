@@ -12,6 +12,7 @@ export interface RepoConfig {
   overlap?: number;
   provider?: string;
   apiKey?: string;
+  watch?: boolean;
 }
 
 export async function loadConfig(): Promise<RepoConfig | undefined> {
