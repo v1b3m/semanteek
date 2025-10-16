@@ -4,21 +4,66 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import { ensureCollection, upsert } from "./qdrant";
 import { randomUUID } from "crypto";
+import { OpenAI } from "openai";
+import { GoogleAuth } from "google-auth-library";
 import { loadConfig } from "./config";
 
 let embedder: any; // cached pipeline instance
+let embedFn: (text: string) => Promise<number[]>;
 
 export async function initEmbedder() {
-  if (embedder) return embedder;
-  embedder = await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: "Semanteek: loading embedding model…",
-      cancellable: false,
-    },
-    () => pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
-  );
-  return embedder;
+  const cfg = await loadConfig();
+  switch (cfg?.provider ?? "local") {
+    case "openai":
+      return initOpenAI(cfg);
+    case "google":
+      return initGoogle(cfg);
+    default:
+      return initLocal();
+  }
+
+  // if (embedder) return embedder;
+  // embedder = await vscode.window.withProgress(
+  //   {
+  //     location: vscode.ProgressLocation.Notification,
+  //     title: "Semanteek: loading embedding model…",
+  //     cancellable: false,
+  //   },
+  //   () => pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2")
+  // );
+  // return embedder;
+}
+
+async function initOpenAI(cfg: any) {
+  const openai = new OpenAI({ apiKey: resolveKey(cfg.apiKey) });
+  const model = cfg.model ?? "text-embedding-3-small";
+  embedFn = async (text: string) => {
+    const r = await openai.embeddings.create({ model, input: text });
+    return r.data[0].embedding; // 1536-D by default
+  };
+}
+
+async function initGoogle(cfg: any) {
+  const auth = new GoogleAuth({
+    scopes: "https://www.googleapis.com/auth/cloud-platform",
+  });
+  const project = await auth.getProjectId();
+  const url = `https://textembedding.googleapis.com/v1/projects/${project}/locations/us-central1/models/textembedding-gecko:predict`;
+  const client = await auth.getClient();
+  embedFn = async (text: string) => {
+    const body = { instances: [{ content: text }] };
+    const r = await client.request({ url, method: "POST", data: body });
+    // @ts-expect-error
+    return r.data.predictions[0].embedding; // 768-D
+  };
+}
+
+async function initLocal() {
+  const pipe = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+  embedFn = async (text: string) => {
+    const res = await pipe(text, { pooling: "mean", normalize: true });
+    return Array.from(res.data);
+  };
 }
 
 export async function indexWorkspace() {
@@ -68,13 +113,10 @@ export async function indexWorkspace() {
         const chunks = chunkCode(content, 30);
 
         for (const ch of chunks) {
-          const vector = await embedder(ch.text, {
-            pooling: "mean",
-            normalize: true,
-          });
+          const vector = await embed(ch.text);
           batch.push({
             id: randomUUID(),
-            vector: Array.from(vector.data),
+            vector,
             payload: { file: rel, start: ch.startLine, text: ch.text },
           });
 
@@ -105,4 +147,11 @@ function chunkCode(src: string, stride: number) {
     out.push({ text: slice, startLine: i + 1 });
   }
   return out;
+}
+
+export const embed = (text: string) => embedFn(text);
+
+function resolveKey(key: string) {
+  const m = key?.match(/^\${env\.(.+)}$/);
+  return m ? process.env[m[1]] : key;
 }

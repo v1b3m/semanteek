@@ -10,6 +10,8 @@ export interface RepoConfig {
   exclude?: string[];
   chunkSize?: number;
   overlap?: number;
+  provider?: string;
+  apiKey?: string;
 }
 
 export async function loadConfig(): Promise<RepoConfig | undefined> {
