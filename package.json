@@ -20,8 +20,60 @@
       {
         "command": "semanteek.search",
         "title": "Semanteek: Semantic search"
+      },
+      {
+        "command": "semanteek.searchInPanel",
+        "title": "Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "semanteek.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "semanteek.clear",
+        "title": "Clear Results",
+        "icon": "$(clear-all)"
       }
-    ]
+    ],
+    "views": {
+      "semanteek": [
+        {
+          "id": "semanteek.searchPanel",
+          "name": "Semanteek Search",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "semanteek",
+          "title": "Semanteek",
+          "icon": "$(search)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "semanteek.searchInPanel",
+          "when": "view == semanteek.searchPanel",
+          "group": "navigation"
+        },
+        {
+          "command": "semanteek.refresh",
+          "when": "view == semanteek.searchPanel",
+          "group": "navigation"
+        },
+        {
+          "command": "semanteek.clear",
+          "when": "view == semanteek.searchPanel",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "tsc && npm run copy-assets",
