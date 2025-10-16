@@ -41,11 +41,15 @@ export async function semanticSearch() {
       // Allow clicking a result to open the file
       panel.webview.onDidReceiveMessage((msg) => {
         if (msg.command === "open") {
-          vscode.workspace.openTextDocument(msg.file).then((doc) =>
-            vscode.window.showTextDocument(doc, {
-              selection: new vscode.Range(msg.line - 1, 0, msg.line - 1, 0),
-            })
-          );
+          const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+          if (workspaceFolder) {
+            const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, msg.file);
+            vscode.workspace.openTextDocument(fileUri).then((doc) =>
+              vscode.window.showTextDocument(doc, {
+                selection: new vscode.Range(msg.line - 1, 0, msg.line - 1, 0),
+              })
+            );
+          }
         }
       });
     }
