@@ -59,15 +59,15 @@ export async function semanticSearch() {
 function renderWebview(hits: any[], webview: vscode.Webview): string {
   const markdownContent = hits
     .map(
-      (h, idx) => `## ${idx + 1}. ${h.payload.file}:${h.payload.start}
+      (h, idx) => `## ${idx + 1}. [${h.payload.file}:${
+        h.payload.start
+      }](command:semanteek.openFile?${encodeURIComponent(
+        JSON.stringify({ file: h.payload.file, line: h.payload.start })
+      )})
 
 \`\`\`${getLanguageFromFile(h.payload.file)}
 ${h.payload.text}
 \`\`\`
-
-[Open file](command:semanteek.openFile?${encodeURIComponent(
-        JSON.stringify({ file: h.payload.file, line: h.payload.start })
-      )})
 `
     )
     .join("\n---\n");
@@ -122,6 +122,21 @@ ${markdownContent}`;
         font-size: 12px;
         color: #5E81AC;
       }
+      h2 a {
+        color: inherit;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        padding: 2px 4px;
+        border-radius: 4px;
+        background: rgba(129, 161, 193, 0.1);
+        border: 1px solid rgba(129, 161, 193, 0.2);
+      }
+      h2 a:hover {
+        color: #ECEFF4;
+        background: rgba(136, 192, 208, 0.15);
+        border-color: rgba(136, 192, 208, 0.3);
+        transform: translateY(-1px);
+      }
       h3 { 
         color: #A3BE8C; /* nord14 - green */
         margin-top: 12px;
@@ -171,31 +186,6 @@ ${markdownContent}`;
         border: 1px solid #4C566A; /* nord3 - subtle border */
         font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
       }
-      .file-link { 
-        color: #81A1C1; /* nord8 - blue */
-        text-decoration: none; 
-        font-weight: 500;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        background: rgba(129, 161, 193, 0.1);
-        border: 1px solid rgba(129, 161, 193, 0.2);
-        font-size: 12px;
-        margin-top: 4px;
-      }
-      .file-link::before {
-        content: "📁";
-        font-size: 10px;
-      }
-      .file-link:hover { 
-        color: #88C0D0; /* nord7 - cyan on hover */
-        background: rgba(136, 192, 208, 0.15);
-        border-color: rgba(136, 192, 208, 0.3);
-        transform: translateY(-1px);
-      }
       .separator { 
         border: none; 
         border-top: 1px solid #4C566A; /* nord3 - subtle border */
@@ -239,7 +229,7 @@ ${markdownContent}`;
     <script>
       const vscode = acquireVsCodeApi();
       
-      // Handle command links
+      // Handle command links (both in headers and elsewhere)
       document.addEventListener('click', function(e) {
         if (e.target.tagName === 'A' && e.target.href.startsWith('command:')) {
           e.preventDefault();
