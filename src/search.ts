@@ -57,20 +57,26 @@ export async function semanticSearch() {
 }
 
 function renderWebview(hits: any[], webview: vscode.Webview): string {
-  const markdownContent = hits
-    .map(
-      (h, idx) => `## ${idx + 1}. [${h.payload.file}:${
-        h.payload.start
-      }](command:semanteek.openFile?${encodeURIComponent(
-        JSON.stringify({ file: h.payload.file, line: h.payload.start })
-      )})
+  // Deduplicate by file name, keeping the first occurrence
+  const seenFiles = new Set();
+  const uniqueHits = hits.filter((hit) => {
+    if (seenFiles.has(hit.payload.file)) {
+      return false;
+    }
+    seenFiles.add(hit.payload.file);
+    return true;
+  });
 
-\`\`\`${getLanguageFromFile(h.payload.file)}
-${h.payload.text}
-\`\`\`
-`
+  const markdownContent = uniqueHits
+    .map(
+      (h, idx) =>
+        `## ${idx + 1}. [${h.payload.file}:${
+          h.payload.start
+        }](command:semanteek.openFile?${encodeURIComponent(
+          JSON.stringify({ file: h.payload.file, line: h.payload.start })
+        )})`
     )
-    .join("\n---\n");
+    .join("\n");
 
   const fullMarkdown = `# Semantic Search Results
 
