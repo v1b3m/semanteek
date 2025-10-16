@@ -40,8 +40,13 @@
     "views": {
       "semanteek": [
         {
+          "id": "semanteek.searchInput",
+          "name": "Search Input",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
           "id": "semanteek.searchPanel",
-          "name": "Semanteek Search",
+          "name": "Search Results",
           "when": "workspaceFolderCount > 0"
         }
       ]
@@ -59,7 +64,7 @@
       "view/title": [
         {
           "command": "semanteek.searchInPanel",
-          "when": "view == semanteek.searchPanel",
+          "when": "view == semanteek.searchInput",
           "group": "navigation"
         },
         {
