@@ -1,12 +1,39 @@
 {
   "name": "semanteek",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "displayName": "Semanteek",
+  "description": "Natural-language search inside your codebase",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "semanteek.index",
+        "title": "Semanteek: Index workspace"
+      },
+      {
+        "command": "semanteek.search",
+        "title": "Semanteek: Semantic search"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc && npm run copy-assets",
+    "copy-assets": "cp -r media out/"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^4.9.0"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.5.0",
+    "axios": "^1.4.0"
+  }
 }
