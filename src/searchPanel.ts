@@ -64,10 +64,10 @@ export class SearchPanelProvider
 
   private async initializeEmbedder() {
     try {
-      this.embedder = await pipeline(
-        "feature-extraction",
-        "Xenova/all-MiniLM-L6-v2"
-      );
+      // Use the same embedder initialization as the main search
+      const { initEmbedder, embed } = await import("./indexer");
+      await initEmbedder();
+      this.embedder = { embed };
     } catch (error) {
       console.error("Failed to initialize embedder:", error);
     }
@@ -91,11 +91,8 @@ export class SearchPanelProvider
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Searching…" },
         async () => {
-          const vector = await this.embedder(query, {
-            pooling: "mean",
-            normalize: true,
-          });
-          const hits = await search(Array.from(vector.data), 12);
+          const vector = await this.embedder.embed(query);
+          const hits = await search(vector, 12);
 
           // Convert hits to SearchResult format
           this.searchResults = hits.map((hit: any) => ({

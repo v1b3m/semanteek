@@ -7,53 +7,63 @@ export async function activateSearch(context: vscode.ExtensionContext) {
   embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
 }
 
-export async function semanticSearch() {
+export async function semanticSearch(searchPanelProvider?: any) {
   const query = await vscode.window.showInputBox({
     placeHolder: 'e.g. "where do we handle OAuth refresh tokens?"',
   });
   if (!query) return;
-  await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: "Searching…" },
-    async () => {
-      const vector = await embedder(query, {
-        pooling: "mean",
-        normalize: true,
-      });
-      const hits = await search(Array.from(vector.data), 12);
-      if (hits.length === 0) {
-        vscode.window.showInformationMessage("No matches");
-        return;
-      }
-      const panel = vscode.window.createWebviewPanel(
-        "semanteekResults",
-        "Semanteek results",
-        vscode.ViewColumn.Two,
-        {
-          enableScripts: true,
-          localResourceRoots: [
-            vscode.Uri.joinPath(vscode.Uri.file(__dirname), "..", "media"),
-          ],
-        }
-      );
-      const html = renderWebview(hits, panel.webview);
-      panel.webview.html = html;
 
-      // Allow clicking a result to open the file
-      panel.webview.onDidReceiveMessage((msg) => {
-        if (msg.command === "open") {
-          const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-          if (workspaceFolder) {
-            const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, msg.file);
-            vscode.workspace.openTextDocument(fileUri).then((doc) =>
-              vscode.window.showTextDocument(doc, {
-                selection: new vscode.Range(msg.line - 1, 0, msg.line - 1, 0),
-              })
-            );
-          }
+  if (searchPanelProvider) {
+    // Use the search panel provider to show results in the left pane
+    await searchPanelProvider.performSearch(query);
+  } else {
+    // Fallback to webview if no search panel provider is available
+    await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Searching…" },
+      async () => {
+        const vector = await embedder(query, {
+          pooling: "mean",
+          normalize: true,
+        });
+        const hits = await search(Array.from(vector.data), 12);
+        if (hits.length === 0) {
+          vscode.window.showInformationMessage("No matches");
+          return;
         }
-      });
-    }
-  );
+        const panel = vscode.window.createWebviewPanel(
+          "semanteekResults",
+          "Semanteek results",
+          vscode.ViewColumn.Two,
+          {
+            enableScripts: true,
+            localResourceRoots: [
+              vscode.Uri.joinPath(vscode.Uri.file(__dirname), "..", "media"),
+            ],
+          }
+        );
+        const html = renderWebview(hits, panel.webview);
+        panel.webview.html = html;
+
+        // Allow clicking a result to open the file
+        panel.webview.onDidReceiveMessage((msg) => {
+          if (msg.command === "open") {
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (workspaceFolder) {
+              const fileUri = vscode.Uri.joinPath(
+                workspaceFolder.uri,
+                msg.file
+              );
+              vscode.workspace.openTextDocument(fileUri).then((doc) =>
+                vscode.window.showTextDocument(doc, {
+                  selection: new vscode.Range(msg.line - 1, 0, msg.line - 1, 0),
+                })
+              );
+            }
+          }
+        });
+      }
+    );
+  }
 }
 
 function renderWebview(hits: any[], webview: vscode.Webview): string {

@@ -46,7 +46,9 @@ export async function activate(context: vscode.ExtensionContext) {
       searchInputProvider
     ),
     vscode.commands.registerCommand("semanteek.index", indexWorkspace),
-    vscode.commands.registerCommand("semanteek.search", semanticSearch),
+    vscode.commands.registerCommand("semanteek.search", () =>
+      semanticSearch(searchPanelProvider)
+    ),
     vscode.commands.registerCommand("semanteek.searchInPanel", () =>
       searchPanelProvider.searchFromCommand()
     ),
